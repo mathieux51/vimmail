@@ -321,90 +321,134 @@ struct EmailRowView: View {
     let isFocused: Bool
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Selection indicator
-            if isSelected && !isFocused {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(NordTheme.Semantic.accent)
-            } else {
+        HStack(spacing: 14) {
+            // Selection/Unread indicator with background
+            ZStack {
                 Circle()
-                    .stroke(email.isRead ? NordTheme.Semantic.textMuted : NordTheme.Semantic.unread, lineWidth: 2)
-                    .frame(width: 12, height: 12)
-                    .overlay(
-                        Circle()
-                            .fill(email.isRead ? Color.clear : NordTheme.Semantic.unread)
-                            .frame(width: 6, height: 6)
-                    )
+                    .fill(unreadIndicatorBackground)
+                    .frame(width: 24, height: 24)
+                
+                if isSelected && !isFocused {
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                } else if !email.isRead {
+                    Circle()
+                        .fill(NordTheme.nord8)
+                        .frame(width: 8, height: 8)
+                }
             }
             
-            // Star
+            // Star with distinct background
             Button(action: {}) {
-                Image(systemName: email.isStarred ? "star.fill" : "star")
-                    .foregroundColor(email.isStarred ? NordTheme.Semantic.starred : NordTheme.Semantic.textMuted)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(email.isStarred ? NordTheme.nord13.opacity(0.2) : Color.clear)
+                        .frame(width: 28, height: 28)
+                    
+                    Image(systemName: email.isStarred ? "star.fill" : "star")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(email.isStarred ? NordTheme.nord13 : NordTheme.nord3)
+                }
             }
             .buttonStyle(.plain)
             
-            // Sender info with phishing indicator
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    // Sender verification indicator
-                    SenderVerificationBadge(trustLevel: email.senderTrustLevel)
-                    
-                    Text(email.from.displayName)
-                        .font(.subheadline.bold())
-                        .foregroundColor(email.isRead ? NordTheme.Semantic.textSecondary : NordTheme.Semantic.textPrimary)
-                        .lineLimit(1)
-                }
+            // Sender avatar with trust indicator
+            ZStack(alignment: .bottomTrailing) {
+                // Avatar circle
+                Circle()
+                    .fill(avatarColor)
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Text(email.from.displayName.prefix(1).uppercased())
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
                 
-                // Email address (always visible for security)
+                // Trust badge overlay
+                TrustBadge(trustLevel: email.senderTrustLevel)
+                    .offset(x: 4, y: 4)
+            }
+            
+            // Sender info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(email.from.displayName)
+                    .font(.system(size: 13, weight: email.isRead ? .regular : .semibold))
+                    .foregroundColor(email.isRead ? NordTheme.nord4 : NordTheme.nord6)
+                    .lineLimit(1)
+                
                 Text(email.from.email)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(senderEmailColor)
                     .lineLimit(1)
             }
-            .frame(width: 150, alignment: .leading)
+            .frame(width: 140, alignment: .leading)
             
             // Subject and snippet
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(email.subject)
-                    .font(.subheadline)
-                    .foregroundColor(email.isRead ? NordTheme.Semantic.textSecondary : NordTheme.Semantic.textPrimary)
-                    .fontWeight(email.isRead ? .regular : .semibold)
+                    .font(.system(size: 13, weight: email.isRead ? .regular : .semibold))
+                    .foregroundColor(email.isRead ? NordTheme.nord4 : NordTheme.nord6)
                     .lineLimit(1)
                 
                 Text(email.snippet)
-                    .font(.caption)
-                    .foregroundColor(NordTheme.Semantic.textMuted)
+                    .font(.system(size: 12))
+                    .foregroundColor(NordTheme.nord3)
                     .lineLimit(1)
             }
             
             Spacer()
             
-            // Attachment indicator
+            // Attachment badge
             if !email.attachments.isEmpty {
-                HStack(spacing: 2) {
+                HStack(spacing: 4) {
                     Image(systemName: "paperclip")
+                        .font(.system(size: 12, weight: .medium))
                     Text("\(email.attachments.count)")
+                        .font(.system(size: 11, weight: .medium))
                 }
-                .font(.caption)
-                .foregroundColor(NordTheme.Semantic.attachment)
+                .foregroundColor(NordTheme.nord15)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(NordTheme.nord15.opacity(0.15))
+                .cornerRadius(12)
             }
             
-            // Date
+            // Date with subtle background
             Text(formatDate(email.date))
-                .font(.caption)
-                .foregroundColor(NordTheme.Semantic.textMuted)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(NordTheme.nord4)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(NordTheme.nord2.opacity(0.5))
+                .cornerRadius(6)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(backgroundColor)
+    }
+    
+    private var unreadIndicatorBackground: Color {
+        if isSelected && !isFocused {
+            return NordTheme.nord10
+        } else if !email.isRead {
+            return NordTheme.nord8.opacity(0.2)
+        }
+        return NordTheme.nord2.opacity(0.3)
+    }
+    
+    private var avatarColor: Color {
+        // Generate consistent color based on email
+        let colors = [NordTheme.nord10, NordTheme.nord14, NordTheme.nord15, NordTheme.nord12, NordTheme.nord7]
+        let index = abs(email.from.email.hashValue) % colors.count
+        return colors[index]
     }
     
     private var backgroundColor: Color {
         if isFocused {
-            return NordTheme.Semantic.selection
+            return NordTheme.nord2
         } else if isSelected {
-            return NordTheme.Semantic.selection.opacity(0.5)
+            return NordTheme.nord1
         }
         return Color.clear
     }
@@ -412,11 +456,11 @@ struct EmailRowView: View {
     private var senderEmailColor: Color {
         switch email.senderTrustLevel {
         case .verified:
-            return NordTheme.Semantic.textMuted
+            return NordTheme.nord3
         case .unknown:
-            return NordTheme.Semantic.unknownSender
+            return NordTheme.nord12
         case .suspicious:
-            return NordTheme.Semantic.phishingWarning
+            return NordTheme.nord11
         }
     }
     
@@ -432,24 +476,39 @@ struct EmailRowView: View {
     }
 }
 
-// MARK: - Sender Verification Badge
-struct SenderVerificationBadge: View {
+// MARK: - Trust Badge (small indicator on avatar)
+struct TrustBadge: View {
     let trustLevel: Email.SenderTrustLevel
     
     var body: some View {
-        Group {
-            switch trustLevel {
-            case .verified:
-                Image(systemName: "checkmark.shield.fill")
-                    .foregroundColor(NordTheme.Semantic.verifiedSender)
-            case .unknown:
-                Image(systemName: "questionmark.circle")
-                    .foregroundColor(NordTheme.Semantic.unknownSender)
-            case .suspicious:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(NordTheme.Semantic.phishingWarning)
-            }
+        ZStack {
+            Circle()
+                .fill(NordTheme.nord0)
+                .frame(width: 16, height: 16)
+            
+            Circle()
+                .fill(badgeColor)
+                .frame(width: 12, height: 12)
+            
+            Image(systemName: badgeIcon)
+                .font(.system(size: 7, weight: .bold))
+                .foregroundColor(.white)
         }
-        .font(.caption)
+    }
+    
+    private var badgeColor: Color {
+        switch trustLevel {
+        case .verified: return NordTheme.nord14
+        case .unknown: return NordTheme.nord12
+        case .suspicious: return NordTheme.nord11
+        }
+    }
+    
+    private var badgeIcon: String {
+        switch trustLevel {
+        case .verified: return "checkmark"
+        case .unknown: return "questionmark"
+        case .suspicious: return "exclamationmark"
+        }
     }
 }

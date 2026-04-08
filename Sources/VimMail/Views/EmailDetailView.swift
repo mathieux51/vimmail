@@ -456,3 +456,46 @@ struct EmptyEmailView: View {
         .background(NordTheme.Semantic.background)
     }
 }
+
+// MARK: - Sender Verification Badge
+struct SenderVerificationBadge: View {
+    let trustLevel: Email.SenderTrustLevel
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: badgeIcon)
+                .font(.caption.bold())
+            Text(badgeText)
+                .font(.caption)
+        }
+        .foregroundColor(badgeColor)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(badgeColor.opacity(0.15))
+        .cornerRadius(12)
+    }
+    
+    private var badgeColor: Color {
+        switch trustLevel {
+        case .verified: return NordTheme.nord14
+        case .unknown: return NordTheme.nord12
+        case .suspicious: return NordTheme.nord11
+        }
+    }
+    
+    private var badgeIcon: String {
+        switch trustLevel {
+        case .verified: return "checkmark.shield.fill"
+        case .unknown: return "questionmark.circle"
+        case .suspicious: return "exclamationmark.triangle.fill"
+        }
+    }
+    
+    private var badgeText: String {
+        switch trustLevel {
+        case .verified: return "Verified"
+        case .unknown: return "Unknown"
+        case .suspicious: return "Suspicious"
+        }
+    }
+}

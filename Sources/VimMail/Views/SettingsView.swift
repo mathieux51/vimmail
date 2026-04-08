@@ -222,56 +222,164 @@ struct SettingsView: View {
 // MARK: - Accounts Settings
 struct AccountsSettingsView: View {
     @EnvironmentObject var accountManager: AccountManager
+    @State private var googleClientId: String = UserDefaults.standard.string(forKey: "googleClientId") ?? ""
+    @State private var showingSetupInfo = false
+    @State private var showingAddAccount = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Connected Accounts")
-                .font(.headline)
-            
-            ForEach(accountManager.accounts) { account in
-                HStack {
-                    Circle()
-                        .fill(Color(hex: account.avatarColor))
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Text(account.initials)
-                                .font(.caption.bold())
-                                .foregroundColor(.white)
-                        )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Google OAuth Setup Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Google OAuth Setup")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        if GoogleOAuthConfig.isConfigured {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(NordTheme.nord14)
+                                Text("Configured")
+                                    .font(.caption)
+                                    .foregroundColor(NordTheme.nord14)
+                            }
+                        } else {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(NordTheme.nord12)
+                                Text("Not configured")
+                                    .font(.caption)
+                                    .foregroundColor(NordTheme.nord12)
+                            }
+                        }
+                    }
                     
-                    VStack(alignment: .leading) {
-                        Text(account.name)
-                            .font(.subheadline.bold())
-                        Text(account.email)
+                    Text("To connect Gmail accounts, you need to set up Google OAuth credentials.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        TextField("Google Client ID", text: $googleClientId)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Button("Save") {
+                            UserDefaults.standard.set(googleClientId, forKey: "googleClientId")
+                        }
+                        .disabled(googleClientId.isEmpty)
+                    }
+                    
+                    Button(action: { showingSetupInfo.toggle() }) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                            Text("How to get a Client ID")
+                        }
+                        .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(NordTheme.nord8)
+                    
+                    if showingSetupInfo {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Setup Instructions:")
+                                .font(.caption.bold())
+                            
+                            Text("""
+                            1. Go to console.cloud.google.com
+                            2. Create a new project
+                            3. Enable the Gmail API
+                            4. Go to Credentials > Create OAuth Client ID
+                            5. Select "macOS" as application type
+                            6. Set Bundle ID: com.mathieux51.vimmail
+                            7. Copy the Client ID and paste above
+                            """)
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            
+                            Button("Open Google Cloud Console") {
+                                NSWorkspace.shared.open(URL(string: "https://console.cloud.google.com/apis/credentials")!)
+                            }
+                            .font(.caption)
+                        }
+                        .padding()
+                        .background(NordTheme.nord1)
+                        .cornerRadius(8)
                     }
-                    
-                    Spacer()
-                    
-                    Button("Remove") {
-                        accountManager.removeAccount(account.id)
-                    }
-                    .foregroundColor(.red)
                 }
                 .padding()
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(8)
-            }
-            
-            Button(action: {
-                accountManager.startGoogleAuth()
-            }) {
-                HStack {
-                    Image(systemName: "plus.circle")
-                    Text("Add Google Account")
+                .background(NordTheme.nord1.opacity(0.5))
+                .cornerRadius(12)
+                
+                Divider()
+                
+                // Connected Accounts Section
+                Text("Connected Accounts")
+                    .font(.headline)
+                
+                if accountManager.accounts.isEmpty {
+                    HStack {
+                        Image(systemName: "person.crop.circle.badge.questionmark")
+                            .font(.title)
+                            .foregroundColor(NordTheme.nord3)
+                        Text("No accounts connected")
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(NordTheme.nord1.opacity(0.3))
+                    .cornerRadius(8)
+                } else {
+                    ForEach(accountManager.accounts) { account in
+                        HStack {
+                            Circle()
+                                .fill(Color(hex: account.avatarColor))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text(account.initials)
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                )
+                            
+                            VStack(alignment: .leading) {
+                                Text(account.name)
+                                    .font(.subheadline.bold())
+                                Text(account.email)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button("Remove") {
+                                accountManager.removeAccount(account.id)
+                            }
+                            .foregroundColor(.red)
+                        }
+                        .padding()
+                        .background(NordTheme.nord1.opacity(0.5))
+                        .cornerRadius(8)
+                    }
                 }
+                
+                Button(action: {
+                    showingAddAccount = true
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle")
+                        Text("Add Account")
+                    }
+                }
+                .buttonStyle(NordButtonStyle(variant: .primary))
+                
+                Spacer()
             }
-            .buttonStyle(NordButtonStyle(variant: .primary))
-            
-            Spacer()
+            .padding()
         }
-        .padding()
+        .sheet(isPresented: $showingAddAccount) {
+            AddAccountView()
+                .environmentObject(accountManager)
+        }
     }
 }
 

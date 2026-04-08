@@ -188,10 +188,17 @@ struct SidebarView: View {
 struct AccountSelector: View {
     @EnvironmentObject var accountManager: AccountManager
     @State private var isExpanded = false
+    @State private var showingAddAccount = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button(action: { isExpanded.toggle() }) {
+            Button(action: { 
+                if accountManager.accounts.isEmpty {
+                    showingAddAccount = true
+                } else {
+                    isExpanded.toggle()
+                }
+            }) {
                 HStack {
                     if let account = accountManager.accounts.first {
                         Circle()
@@ -212,14 +219,19 @@ struct AccountSelector: View {
                                 .foregroundColor(NordTheme.Semantic.textMuted)
                         }
                     } else {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(NordTheme.Semantic.accent)
                         Text("Add Account")
                             .foregroundColor(NordTheme.Semantic.accent)
                     }
                     
                     Spacer()
                     
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(NordTheme.Semantic.textMuted)
+                    if !accountManager.accounts.isEmpty {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .foregroundColor(NordTheme.Semantic.textMuted)
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -250,7 +262,8 @@ struct AccountSelector: View {
                 }
                 
                 Button(action: {
-                    accountManager.startGoogleAuth()
+                    showingAddAccount = true
+                    isExpanded = false
                 }) {
                     HStack {
                         Image(systemName: "plus.circle")
@@ -262,6 +275,10 @@ struct AccountSelector: View {
                 .buttonStyle(.plain)
                 .padding(.leading, 8)
             }
+        }
+        .sheet(isPresented: $showingAddAccount) {
+            AddAccountView()
+                .environmentObject(accountManager)
         }
     }
 }

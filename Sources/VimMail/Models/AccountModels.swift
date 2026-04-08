@@ -41,9 +41,19 @@ struct OAuthToken: Codable {
 
 // MARK: - Google OAuth Configuration
 struct GoogleOAuthConfig {
-    // These should be stored securely and loaded from environment/keychain
-    static let clientId = "YOUR_CLIENT_ID.apps.googleusercontent.com"
-    static let redirectUri = "com.vimmail://oauth2callback"
+    // Load from environment variable or use placeholder
+    static var clientId: String {
+        if let envClientId = ProcessInfo.processInfo.environment["VIMMAIL_GOOGLE_CLIENT_ID"] {
+            return envClientId
+        }
+        // Check UserDefaults (set via Settings)
+        if let savedClientId = UserDefaults.standard.string(forKey: "googleClientId"), !savedClientId.isEmpty {
+            return savedClientId
+        }
+        return "YOUR_CLIENT_ID.apps.googleusercontent.com"
+    }
+    
+    static let redirectUri = "com.vimmail:/oauth2callback"
     static let authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth"
     static let tokenEndpoint = "https://oauth2.googleapis.com/token"
     static let revokeEndpoint = "https://oauth2.googleapis.com/revoke"
@@ -59,5 +69,9 @@ struct GoogleOAuthConfig {
     
     static var scopeString: String {
         scopes.joined(separator: " ")
+    }
+    
+    static var isConfigured: Bool {
+        !clientId.contains("YOUR_CLIENT_ID")
     }
 }
