@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import AppKit
 
 // MARK: - Notification Manager
 @MainActor
@@ -7,14 +8,18 @@ class NotificationManager: ObservableObject {
     @Published var isAuthorized = false
     @Published var pendingNotifications: [String] = []
     
-    private let center = UNUserNotificationCenter.current()
+    private var center: UNUserNotificationCenter?
     
     init() {
-        checkAuthorization()
+        // Only initialize notification center if running as a proper app bundle
+        if Bundle.main.bundleIdentifier != nil {
+            center = UNUserNotificationCenter.current()
+            checkAuthorization()
+        }
     }
     
     func checkAuthorization() {
-        center.getNotificationSettings { settings in
+        center?.getNotificationSettings { settings in
             DispatchQueue.main.async {
                 self.isAuthorized = settings.authorizationStatus == .authorized
             }
@@ -22,6 +27,7 @@ class NotificationManager: ObservableObject {
     }
     
     func requestAuthorization() async -> Bool {
+        guard let center = center else { return false }
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
             await MainActor.run {
@@ -37,7 +43,7 @@ class NotificationManager: ObservableObject {
     // MARK: - Send Notifications
     
     func notifyNewEmail(_ email: Email) {
-        guard isAuthorized else { return }
+        guard isAuthorized, let center = center else { return }
         
         let content = UNMutableNotificationContent()
         content.title = email.from.displayName
@@ -63,7 +69,7 @@ class NotificationManager: ObservableObject {
     }
     
     func notifyBatchEmails(count: Int, accountEmail: String) {
-        guard isAuthorized else { return }
+        guard isAuthorized, let center = center else { return }
         
         let content = UNMutableNotificationContent()
         content.title = "New Emails"
@@ -82,14 +88,14 @@ class NotificationManager: ObservableObject {
     // MARK: - Badge Management
     
     func updateBadge(count: Int) {
-        #if os(macOS)
         NSApplication.shared.dockTile.badgeLabel = count > 0 ? "\(count)" : nil
-        #endif
     }
     
     // MARK: - Notification Categories
     
     func registerCategories() {
+        guard let center = center else { return }
+        
         let markReadAction = UNNotificationAction(
             identifier: "MARK_READ",
             title: "Mark as Read",
@@ -127,21 +133,10 @@ class NotificationManager: ObservableObject {
     // MARK: - Clear Notifications
     
     func clearNotification(for emailId: String) {
-        center.removeDeliveredNotifications(withIdentifiers: [emailId])
+        center?.removeDeliveredNotifications(withIdentifiers: [emailId])
     }
     
     func clearAllNotifications() {
-        center.removeAllDeliveredNotifications()
+        center?.removeAllDeliveredNotifications()
     }
 }
-
-// MARK: - Notification Extension for NSApplication
-#if os(macOS)
-import AppKit
-
-extension NSApplication {
-    static func updateDockBadge(_ count: Int) {
-        NSApplication.shared.dockTile.badgeLabel = count > 0 ? "\(count)" : nil
-    }
-}
-#endif
