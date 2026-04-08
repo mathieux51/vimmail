@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.swp
+*.swo
+*~
+.env
+credentials.json
+*.pem
+*.p12
